@@ -1,7 +1,7 @@
-![Christopher Silva](http://i.imgur.com/rpsGgHZ.jpg)
+<img src="http://i.imgur.com/rpsGgHZ.jpg" width="400">
 
 Christopher Silva
 
 csoscss@gmail.com
 
-https://csos95.ddns.net (currently down because it runs on a raspberry pi and a storm corrupted the sd card)
+<a href=https://csos95.ddns.net>Website</a> currently down because it runs on a raspberry pi and a storm corrupted the sd card
