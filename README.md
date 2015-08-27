@@ -4,4 +4,4 @@ Christopher Silva
 
 csoscss@gmail.com
 
-<a href=https://csos95.ddns.net>Website</a> currently down because it runs on a raspberry pi and a storm corrupted the sd card
+csos95.ddns.net currently down because it runs on a raspberry pi and a storm corrupted the sd card
