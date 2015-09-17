@@ -1,4 +1,4 @@
-<img src="http://i.imgur.com/rpsGgHZ.jpg" width="400">
+<img src="http://i.imgur.com/9JLd2VP.jpg" width="400">
 
 Christopher Silva
 
