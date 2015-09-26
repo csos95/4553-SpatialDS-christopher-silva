@@ -4,4 +4,4 @@ Christopher Silva
 
 csoscss@gmail.com
 
-<a href=https://csos95.ddns.net>Website</a>
+<a href=https://csos95.com>Website</a>
