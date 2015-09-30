@@ -240,7 +240,7 @@ class BouncingShape(object):
         self.theta = 0
         self.xvel = random.randint(1, 5)
         self.yvel = random.randint(1, 5)
-        self.rvel =0# (math.pi / 2) * random.random()
+        self.rvel = 0#(math.pi / 2) * random.random()
 
     def update(self, canvas):
         rect = self.shape.get_bounding_rect()
@@ -288,10 +288,9 @@ class Driver(pantograph.PantographHandler):
         
         static_points = []
         static_shapes = [pantograph.Polygon([(65, 51),  (90, 74),  (145, 60),  (201, 69),  (265, 46),  (333, 61),  (352, 99),  (370, 129),  (474, 138),  (474, 178),  (396, 225),  (351, 275),  (376, 312),  (382, 356),  (338, 368),  (287, 302),  (224, 304),  (128, 338),  (110, 316),  (129, 270),  (83, 231),  (103, 201),  (126, 162),  (83, 163)], None, "#00f")]
-        
         static_shapes.append(pantograph.Polygon([(500,500), (500,600), (600,600), (600,500)], None, "#00f"))  
-        static_shapes.append(pantograph.Polygon([(700,700), (700,800), (800,800), (800,700)], None, "#00f"))        
-        
+        static_shapes.append(pantograph.Polygon([(700,700), (700,800), (800,800), (800,700)], None, "#00f"))
+            
         for i in range(10):
             static_points.append(pantograph.Circle(random.randint(0,self.width), random.randint(0,self.height), 7, "0f0"))
 
@@ -302,7 +301,6 @@ class Driver(pantograph.PantographHandler):
         self.clear_rect(0, 0, self.width, self.height)
 
         for shape in self.shapes:
-            shape.update(self)
             for point in self.points:
                 if shape.point_inside_polygon(Point(point.shape.x, point.shape.y)):
                     point.shape.fill_color = "#f00"
@@ -311,14 +309,18 @@ class Driver(pantograph.PantographHandler):
             point.update(self)
             point.shape.fill_color = "#0f0"
 
-        for (a, b) in itertools.combinations(self.shapes, 2):
-            if a.shape.intersects(b.shape):
-                xveltmp = a.xvel
-                yveltmp = a.yvel
-                a.xvel = b.xvel
-                a.yvel = b.yvel
-                b.xvel = xveltmp
-                b.yvel = yveltmp
+        for a in self.shapes:
+            a.update(self)
+            for b in self.shapes:
+                if a != b:
+                    for point in b.shape.points:
+                        if a.point_inside_polygon(Point(point[0], point[1])):
+                            xveltmp = a.xvel
+                            yveltmp = a.yvel
+                            a.xvel = b.xvel
+                            a.yvel = b.yvel
+                            b.xvel = xveltmp
+                            b.yvel = yveltmp
 
 if __name__ == '__main__':
     app = pantograph.SimplePantographApplication(Driver)
