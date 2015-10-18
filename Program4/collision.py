@@ -340,6 +340,35 @@ class Bounds(object):
     def __repr__(self):
         return "[%s %s %s %s]" % (self.minX, self.minY, self.maxX,self.maxY)
 
+class BouncingPoint:
+    """initializes the values for the bouncing shape"""
+    def __init__(self, point, xvel, yvel, radius, color):
+        self.x = point.x
+        self.y = point.y
+        self.xvel = xvel#random.randint(-4, 5)
+        self.yvel = yvel#random.randint(-4, 5)
+        self.radius = radius
+        self.color = color
+
+    """updates the position of the BouncingPoint"""
+    def update(self, canvas):
+        
+        if self.x <= 0 or self.x >= canvas.width:
+            self.xvel *= -1
+            self.x += self.xvel
+            self.y += self.yvel
+        if self.y <= 0 or self.y >= canvas.height:
+            self.yvel *= -1
+            self.x += self.xvel
+            self.y += self.yvel
+        
+        self.x += self.xvel
+        self.y += self.yvel
+        
+    def multiplySpeed(self, multiplicity):
+        self.xvel = self.xvel * multiplicity
+        self.yvel = self.yvel * multiplicity
+
 """
 The driver class that extends the Pantograph class that creates the html 5
 canvas animations.
@@ -361,7 +390,8 @@ class Driver(pantograph.PantographHandler):
     def setup(self):
         self.bounds = Bounds(0,0,self.width,self.height)
         self.maxvelocity = 10
-        self.BallSpeeds = np.arange(1,self.maxvelocity,1)
+        self.BallSpeeds = np.arange(-self.maxvelocity,self.maxvelocity+1,1)
+        self.BallSpeeds = np.delete(self.BallSpeeds, self.maxvelocity)
         self.numBalls = 50
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
@@ -369,9 +399,11 @@ class Driver(pantograph.PantographHandler):
         self.Balls = []
         self.Boxes = []
         self.freeze = False
+        self.showBoxes = True
         
         for i in range(self.numBalls):
-            ball = Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00")
+            ball = BouncingPoint(self.getRandomPosition(), random.choice(self.BallSpeeds), random.choice(self.BallSpeeds), self.BallSize, "#F00")
+            #ball = Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00")
             self.Balls.append(ball)
             self.qt.insertBall(ball)
 
@@ -383,7 +415,8 @@ class Driver(pantograph.PantographHandler):
             self.moveBalls()
         self.clear_rect(0, 0, self.width, self.height)
         self.drawBalls()
-        self.drawBoxes();
+        if self.showBoxes:        
+            self.drawBoxes();
                 
     """
     Generate some random point somewhere within the bounds of the canvas.
@@ -407,7 +440,7 @@ class Driver(pantograph.PantographHandler):
     Draw the balls
     """
     def drawBalls(self):
-        for r in self.Balls:
+        for r in self.Balls:           
             self.fill_circle(r.x,r.y,r.radius,r.color)
             r.color = "#F00"
 
@@ -421,8 +454,16 @@ class Driver(pantograph.PantographHandler):
                 ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
                 ball.y+ball.radius+self.maxvelocity], ball)
             for nearball in nearballs:
-                nearball.color = "#0F0"
-                ball.color = "#0f0"
+                if math.pow(nearball.x - ball.x, 2) + math.pow(nearball.y - ball.y, 2) <= math.pow(nearball.radius + ball.radius, 2):
+                    print "collision!"
+                    nearball.color = "#0F0"
+                    ball.color = "#0f0"
+                    xveltmp = ball.xvel
+                    yveltmp = ball.yvel
+                    ball.xvel = nearball.xvel
+                    ball.yvel = nearball.yvel
+                    nearball.xvel = xveltmp
+                    nearball.yvel = yveltmp
      
     """
     When a ball has collided with at least one other ball in the last update,
@@ -432,9 +473,9 @@ class Driver(pantograph.PantographHandler):
     def adjustSizes(self):
         for ball in self.Balls:
             if ball.color == "#0F0":
-                ball.radius+=1
+                ball.radius+=.1
             elif ball.radius > self.BallSize:
-                ball.radius-=(ball.radius-self.BallSize)*.1
+                ball.radius-=.1#(ball.radius-self.BallSize)*.1
 
     """
     Moves the balls
@@ -444,7 +485,8 @@ class Driver(pantograph.PantographHandler):
         self.checkCollisions()
         self.adjustSizes()
         for r in self.Balls:
-            r.move(self.bounds)
+            r.update(self)            
+            #r.move(self.bounds)
             newqt.insertBall(r)
         self.qt = newqt
 
@@ -464,21 +506,29 @@ class Driver(pantograph.PantographHandler):
     right arrow will add a ball
     """
     def on_key_down(self,InputEvent):
+        if InputEvent.key_code == 32:
+            if self.showBoxes:
+                self.showBoxes = False
+            else:
+                self.showBoxes = True
         # User hits the UP arrow
         if InputEvent.key_code == 38:
             for r in self.Balls:
-                r.changeSpeed(r.velocity * 1.25)
+                r.multiplySpeed(1.25)                   
+                #r.changeSpeed(r.velocity * 1.25)
         # User hits the DOWN arrow
         if InputEvent.key_code == 40:
             for r in self.Balls:
-                r.changeSpeed(r.velocity * 0.75)
+                r.multiplySpeed(0.75)                
+                #r.changeSpeed(r.velocity * 0.75)
         # User hits the LEFT arrow
         if InputEvent.key_code == 37:
             del self.Balls[-1]
             self.numBalls-=1
         # User hits the RIGHT arrow
         if InputEvent.key_code == 39:
-            self.Balls.append(Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00"))
+            self.Balls.append(BouncingPoint(self.getRandomPosition(), random.choice(self.BallSpeeds), random.choice(self.BallSpeeds), self.BallSize, "#F00"))
+            #self.Balls.append(Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00"))
             self.numBalls+=1
 
 if __name__ == '__main__':
