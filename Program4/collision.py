@@ -11,7 +11,6 @@ class node:
         self.item = item
         self.bbox = bbox
         self.children = [None, None, None, None]
-        #self.children = {'NE': None, 'SE': None, 'SW': None, 'NW': None}
         
     def __str__(self):
         return "node at (%f,%f)" % (self.x, self.y)
@@ -155,177 +154,6 @@ class Vector(object):
     def __repr__(self):
         return "[\n p1: %s,\n p2: %s,\n vector: %s,\n a: %s,\nb: %s\n]" % (self.p1, self.p2, self.v,self.a,self.b)
 
-"""
-VectorOps give the ability to apply some simple movement to an object.
-@method: _bearing       -- private method to give the bearing going from p1 -> p2
-@method: _magnitude     -- length in this context
-@method: _step          -- a "motion vector" (not correct term) to apply to point p1
-                           that will "step" it towards p2. The size of the "step" is
-                           based on the velocity.
-"""
-class VectorOps(object):
-    def __init__(self,p1=None,p2=None,velocity=1):
-        self.p1 = p1
-        self.p2 = p2
-        self.dx = 0
-        self.dy = 0
-        if not self.p1 == None and not self.p2 == None:
-            self.v = Vector(p1,p2)
-            self.velocity = velocity
-            self.magnitude = self._magnitude()
-            self.bearing = self._bearing()
-            self.step = self._step()
-        else:
-            self.v = None
-            self.velocity = None
-            self.bearing = None
-            self.magnitude = None
-
-    """
-    Calculate the bearing (in radians) between p1 and p2
-    """
-    def _bearing(self):
-        dx = self.p2.x - self.p1.x
-        dy = self.p2.y - self.p1.y
-        rads = math.atan2(-dy,dx)
-        return rads % 2*math.pi         # In radians
-        #degs = degrees(rads)
-    """
-    A vector by itself can have a magnitude when basing it on the origin (0,0),
-    but in this context we want to calculate magnitude (length) based on another
-    point (converted to a vector).
-    """
-    def _magnitude(self):
-        assert not self.v == None
-        return math.sqrt( (self.v.a**2) + (self.v.b**2) )
-
-    """
-    Create the step factor between p1 and p2 to allow a point to
-    move toward p2 at some interval based on velocity. Greater velocity
-    means bigger steps (less granular).
-    """
-    def _step(self):
-        cosa = math.sin(self.bearing)
-        cosb = math.cos(self.bearing)
-        self.dx = cosa * self.velocity
-        self.dy = cosb * self.velocity
-        return [cosa * self.velocity, cosb * self.velocity]
-
-    def _str__(self):
-        return "[\n vector: %s,\n velocity: %s,\n bearing: %s,\n magnitude: %s\n, step: %s\n]" % (self.v, self.velocity, self.bearing,self.magnitude,self.step)
-
-    def __repr__(self):
-        return "[\n vector: %s,\n velocity: %s,\n bearing: %s,\n magnitude: %s\n, step: %s\n]" % (self.v, self.velocity, self.bearing,self.magnitude,self.step)
-
-"""
-Ball is an extension of a point. It doesn't truly "extend" the point class but it
-probably should have! Having said that, I probably should extend the VectorOps class
-as well.
-@method: destination       -- private method to give the bearing going from p1 -> p2
-@method: move              -- length in this context
-@method: xInBounds         -- Helper class to check ... I'll let you guess
-@method: yInBounds         -- Same as previous just vertically :)
-This class is used as follows:
-Given a point, p1, I want to move it somewhere, anywhere. So I do the following:
-1) Create a random point somewhere else on the screen / world / board:
-        distance = 100
-        degrees = math.radians(random.randint(0,360))
-        p2 = destination(distance,degrees)
-2) Now I can calculate a vector between P1 and P2 at a given velocity (scalar value
-    to adjust speed)
-        velocity = random.randint(1,MaxSpeed) # 1-15 or 20
-        vectorOps = VectorOps(p1,p2,velocity)
-3) Finally I have a "step" (or incorrectly coined as a motion vector) that as applied to
-    p1 will move it toward p2 at the given step.
-        p1.x += vectorOps.dx
-        p1.y += vectorOps.dy
-"""
-class Ball():
-    def __init__(self, center, radius,velocity=1,color="#000"):
-        self.center = center
-        self.radius = radius
-        self.velocity = velocity
-        self.x = center.x
-        self.y = center.y
-        self.center = center
-        self.bearing = math.radians(random.randint(0,360))
-        self.dest = self.destination(100,self.bearing)
-        self.vectorOps = VectorOps(self.center,self.dest,self.velocity)
-        self.color = color
-
-    """
-    Given a distance and a bearing find the point: P2 (where we would end up).
-    """
-    def destination(self,distance,bearing):
-        cosa = math.sin(bearing)
-        cosb = math.cos(bearing)
-        return Point(self.x + (distance * cosa), self.y + (distance * cosb))
-
-    """
-    Applies the "step" to current location and checks for out of bounds
-    """
-    def move(self,bounds):
-        x = self.x
-        y = self.y
-
-        #Move temporarily
-        x += self.vectorOps.dx
-        y += self.vectorOps.dy
-
-        #Check if in bounds
-        #If it's not, then change direction
-        if not self._xInBounds(bounds,x):
-            self.vectorOps.dx *= -1
-            self._change_bearing(math.pi)
-        if not self._yInBounds(bounds,y):
-            self.vectorOps.dy *= -1
-
-
-        # Move any way because If we hit boundaries then we'll
-        # go in the other direction.
-        self.x += self.vectorOps.dx
-        self.y += self.vectorOps.dy
-
-        # Update center value of ball
-        self.center.x = self.x
-        self.center.y = self.y
-
-
-    def _xInBounds(self,bounds,x):
-        if x >= bounds.maxX or x <= bounds.minX :
-            return False
-
-        return True
-
-    def _yInBounds(self,bounds,y):
-        if y >= bounds.maxY or y <= bounds.minY:
-            return False
-
-        return True
-
-    """
-    Change Bearing
-    """
-    def _change_bearing(self,change):
-        self.bearing = (self.bearing + change) % (2 * math.pi)
-
-    def changeSpeed(self,new_velocity):
-        self.dest = self.destination(100,self.bearing)
-        self.velocity = new_velocity
-        self.vectorOps = VectorOps(self.center,self.dest,self.velocity)
-
-    """
-    @returns a tuple (x, y)
-    """
-    def as_tuple(self):
-        return (self.x, self.y)
-
-
-    def _str__(self):
-        return "[\n center: %s,\n radius: %s,\n vector: %s,\n speed: %s\n ]" % (self.center,self.radius, self.vectorOps,self.velocity)
-
-    def __repr__(self):
-        return "[\n center: %s,\n radius: %s,\n vector: %s,\n speed: %s\n ]" % (self.center, self.radius, self.vectorOps,self.velocity)
 
 """
 A class more or so to put all the boundary values together. Friendlier than
@@ -352,12 +180,11 @@ class BouncingPoint:
 
     """updates the position of the BouncingPoint"""
     def update(self, canvas):
-        
-        if self.x <= 0 or self.x >= canvas.width:
+        if self.x+self.radius <= 0 or self.x+self.radius >= canvas.width:
             self.xvel *= -1
             self.x += self.xvel
             self.y += self.yvel
-        if self.y <= 0 or self.y >= canvas.height:
+        if self.y+self.radius <= 0 or self.y+self.radius >= canvas.height:
             self.yvel *= -1
             self.x += self.xvel
             self.y += self.yvel
@@ -390,22 +217,31 @@ class Driver(pantograph.PantographHandler):
     def setup(self):
         self.bounds = Bounds(0,0,self.width,self.height)
         self.maxvelocity = 10
-        self.BallSpeeds = np.arange(-self.maxvelocity,self.maxvelocity+1,1)
-        self.BallSpeeds = np.delete(self.BallSpeeds, self.maxvelocity)
-        self.numBalls = 50
+        self.numBalls = 200
+        self.maxBallSize = 100
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
+        self.BallSpeeds = np.arange(-self.maxvelocity,self.maxvelocity+1,1)
+        self.BallSpeeds = np.delete(self.BallSpeeds, self.maxvelocity)
         self.qt = quadtree(self.bounds)
         self.Balls = []
         self.Boxes = []
+        self.BallColor = "#F00"
         self.freeze = False
         self.showBoxes = True
         
         for i in range(self.numBalls):
             ball = BouncingPoint(self.getRandomPosition(), random.choice(self.BallSpeeds), random.choice(self.BallSpeeds), self.BallSize, "#F00")
-            #ball = Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00")
             self.Balls.append(ball)
             self.qt.insertBall(ball)
+                
+    """
+    Generate some random point somewhere within the bounds of the canvas.
+    """
+    def getRandomPosition(self):
+        x = random.randint(0+self.BallSize,int(self.width)-self.BallSize)
+        y = random.randint(0+self.BallSize,int(self.height)-self.BallSize)
+        return Point(x,y)
 
     """
     Runs the animation.
@@ -417,14 +253,64 @@ class Driver(pantograph.PantographHandler):
         self.drawBalls()
         if self.showBoxes:        
             self.drawBoxes();
-                
+
     """
-    Generate some random point somewhere within the bounds of the canvas.
+    Moves the balls
     """
-    def getRandomPosition(self):
-        x = random.randint(0+self.BallSize,int(self.width)-self.BallSize)
-        y = random.randint(0+self.BallSize,int(self.height)-self.BallSize)
-        return Point(x,y)
+    def moveBalls(self):
+        newqt = quadtree(self.bounds)
+        self.checkCollisions()
+        self.adjustSizes()
+        for r in self.Balls:
+            r.update(self)  
+            newqt.insertBall(r)
+        self.qt = newqt
+
+    """
+    Not Implemented fully. The goal is to use the quadtree to check to see which
+    balls collide, then change direction.
+    """
+    def checkCollisions(self):
+        for ball in self.Balls:
+            nearballs = self.qt.regionSearch([ball.x-ball.radius-self.maxvelocity, 
+                ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
+                ball.y+ball.radius+self.maxvelocity], ball)
+            for nearball in nearballs:         
+                if (math.pow((nearball.x+nearball.xvel) - (ball.x+ball.xvel), 2) + 
+                        math.pow((nearball.y+nearball.yvel) - (ball.y+ball.yvel), 2) <= 
+                        math.pow(nearball.radius + ball.radius, 2)):
+                    nearball.color = "#0F0"
+                    ball.color = "#0F0"
+                    xveltmp = ball.xvel
+                    yveltmp = ball.yvel
+                    ball.xvel = nearball.xvel
+                    ball.yvel = nearball.yvel
+                    nearball.xvel = xveltmp
+                    nearball.yvel = yveltmp
+     
+    """
+    When a ball will collide with at least one other ball in the next frame,
+    its radius increases by one. If it has not and its radius is greater
+    that BallSize, the radius decreases based on the current radius
+    If the radius is larger than the maxBallSize, the ball "pops"
+    """  
+    def adjustSizes(self):
+        for ball in self.Balls:
+            if ball.color == "#0F0":
+                ball.radius+=1
+                if ball.radius > self.maxBallSize:
+                    del self.Balls[self.Balls.index(ball)]
+            elif ball.radius > self.BallSize:
+                ball.radius-=(ball.radius-self.BallSize)*.1
+
+    """
+    Draw the balls
+    """
+    def drawBalls(self):
+        for r in self.Balls:
+            self.fill_circle(r.x,r.y,r.radius,r.color)
+            self.draw_circle(r.x,r.y,r.radius,"#000")
+            r.color = self.BallColor
 
 
     """
@@ -437,60 +323,6 @@ class Driver(pantograph.PantographHandler):
             self.draw_line(box[4], box[1], box[4], box[3], color = "#000")
 
     """
-    Draw the balls
-    """
-    def drawBalls(self):
-        for r in self.Balls:           
-            self.fill_circle(r.x,r.y,r.radius,r.color)
-            r.color = "#F00"
-
-    """
-    Not Implemented fully. The goal is to use the quadtree to check to see which
-    balls collide, then change direction.
-    """
-    def checkCollisions(self):
-        for ball in self.Balls:
-            nearballs = self.qt.regionSearch([ball.x-ball.radius-self.maxvelocity, 
-                ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
-                ball.y+ball.radius+self.maxvelocity], ball)
-            for nearball in nearballs:
-                if math.pow(nearball.x - ball.x, 2) + math.pow(nearball.y - ball.y, 2) <= math.pow(nearball.radius + ball.radius, 2):
-                    print "collision!"
-                    nearball.color = "#0F0"
-                    ball.color = "#0f0"
-                    xveltmp = ball.xvel
-                    yveltmp = ball.yvel
-                    ball.xvel = nearball.xvel
-                    ball.yvel = nearball.yvel
-                    nearball.xvel = xveltmp
-                    nearball.yvel = yveltmp
-     
-    """
-    When a ball has collided with at least one other ball in the last update,
-    its radius increases by one. If it has not and its radius is greater
-    that self.BallSize, the radius decreases based on the current radius
-    """           
-    def adjustSizes(self):
-        for ball in self.Balls:
-            if ball.color == "#0F0":
-                ball.radius+=.1
-            elif ball.radius > self.BallSize:
-                ball.radius-=.1#(ball.radius-self.BallSize)*.1
-
-    """
-    Moves the balls
-    """
-    def moveBalls(self):
-        newqt = quadtree(self.bounds)
-        self.checkCollisions()
-        self.adjustSizes()
-        for r in self.Balls:
-            r.update(self)            
-            #r.move(self.bounds)
-            newqt.insertBall(r)
-        self.qt = newqt
-
-    """
     Toggles movement on and off
     """
     def on_click(self,InputEvent):
@@ -500,12 +332,14 @@ class Driver(pantograph.PantographHandler):
             self.freeze = False
 
     """
+    space turns drawboxes on/off
     up arrow will speed balls up by some factor
     down arrow will slow balls down by same factor
     left arrow will remove a ball
     right arrow will add a ball
     """
     def on_key_down(self,InputEvent):
+        # User hits the space bar
         if InputEvent.key_code == 32:
             if self.showBoxes:
                 self.showBoxes = False
@@ -514,13 +348,11 @@ class Driver(pantograph.PantographHandler):
         # User hits the UP arrow
         if InputEvent.key_code == 38:
             for r in self.Balls:
-                r.multiplySpeed(1.25)                   
-                #r.changeSpeed(r.velocity * 1.25)
+                r.multiplySpeed(1.25)
         # User hits the DOWN arrow
         if InputEvent.key_code == 40:
             for r in self.Balls:
-                r.multiplySpeed(0.75)                
-                #r.changeSpeed(r.velocity * 0.75)
+                r.multiplySpeed(0.75)
         # User hits the LEFT arrow
         if InputEvent.key_code == 37:
             del self.Balls[-1]
@@ -528,7 +360,6 @@ class Driver(pantograph.PantographHandler):
         # User hits the RIGHT arrow
         if InputEvent.key_code == 39:
             self.Balls.append(BouncingPoint(self.getRandomPosition(), random.choice(self.BallSpeeds), random.choice(self.BallSpeeds), self.BallSize, "#F00"))
-            #self.Balls.append(Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00"))
             self.numBalls+=1
 
 if __name__ == '__main__':
