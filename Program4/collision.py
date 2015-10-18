@@ -2,6 +2,7 @@ import random
 import math
 import numpy as np
 import pantograph
+import time
 
 class node:
     def __init__(self, x, y, item, bbox):
@@ -12,7 +13,9 @@ class node:
         self.children = {'NE': None, 'SE': None, 'SW': None, 'NW': None}
         
     def __str__(self):
-        return "node at (%f,%f) containing %s" % (self.x, self.y, self.item)
+        return "node at (%f,%f)" % (self.x, self.y)
+    def __repr__(self):
+        return "node at (%f,%f)" % (self.x, self.y)
         
 
 class quadtree:
@@ -82,7 +85,6 @@ class quadtree:
         
     def _getBBoxes(self, subroot):
         bboxes = []
-
         bboxes.append(subroot.bbox + [subroot.x, subroot.y])
         
         if subroot.children['NE'] != None:
@@ -96,10 +98,38 @@ class quadtree:
 
         return bboxes
         
+    def regionSearch(self, bbox, searchnode):
+        return self._regionSearch(self.root, bbox, searchnode)
+        
+    def _regionSearch(self, subroot, searchbox, searchnode):
+        nodes = []
+        if self._inRegion(subroot, searchbox) and subroot.item != searchnode:
+            nodes.append(subroot.item)
+                
+        if subroot.children['NE'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['NE'].bbox):
+            nodes = nodes + self._regionSearch(subroot.children['NE'], searchbox, searchnode)
+        if subroot.children['SE'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['SE'].bbox):
+            nodes = nodes + self._regionSearch(subroot.children['SE'], searchbox, searchnode)
+        if subroot.children['SW'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['SW'].bbox):
+            nodes = nodes + self._regionSearch(subroot.children['SW'], searchbox, searchnode)
+        if subroot.children['NW'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['NW'].bbox):
+            nodes = nodes + self._regionSearch(subroot.children['NW'], searchbox, searchnode)
+        return nodes
+            
+    def _inRegion(self, node, searchbox):
+        return (node.x >= searchbox[0] and node.x <= searchbox[1] and node.y >= searchbox[2] and node.y <= searchbox[3])
+            
+    def _rectangle_overlaps_region(self, searchbox, bbox):
+        return (searchbox[0] <= bbox[2] and searchbox[1] >= bbox[0] and searchbox[2] <= bbox[3] and searchbox[3] >= bbox[1])
+        
+        
 class Point:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        
+    def __str__(self):
+        return "(%f,%f)" % (self.x, self.y)
 
 """
 A vector can be determined from a single point when basing
@@ -329,7 +359,8 @@ class Driver(pantograph.PantographHandler):
     """
     def setup(self):
         self.bounds = Bounds(0,0,self.width,self.height)
-        self.BallSpeeds = np.arange(1,4,1)
+        self.maxvelocity = 10
+        self.BallSpeeds = np.arange(1,self.maxvelocity,1)
         self.numBalls = 20
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
@@ -337,16 +368,14 @@ class Driver(pantograph.PantographHandler):
         self.Balls = []
         self.Boxes = []
         self.freeze = False
-
+        
         for i in range(self.numBalls):
             ball = Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00")
             self.Balls.append(ball)
             self.qt.insertBall(ball)
-        
-        
 
     """
-    Runs the animation. Update happens every ? milliseconds. Its not to bad.
+    Runs the animation.
     """
     def update(self):
         if not self.freeze:
@@ -354,14 +383,19 @@ class Driver(pantograph.PantographHandler):
         self.clear_rect(0, 0, self.width, self.height)
         self.drawBalls()
         self.drawBoxes();
-        #time.sleep(.5)
 
     """
     Not Implemented fully. The goal is to use the quadtree to check to see which
     balls collide, then change direction.
     """
     def checkCollisions(self,r):
-        return
+        for ball in self.Balls:
+            nearballs = self.qt.regionSearch([ball.x-ball.radius-self.maxvelocity, 
+                ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
+                ball.y+ball.radius+self.maxvelocity], ball)
+            for nearball in nearballs:
+                nearball.color = "#0F0"
+                print "collision?"
 
     """
     Generate some random point somewhere within the bounds of the canvas.
@@ -375,7 +409,7 @@ class Driver(pantograph.PantographHandler):
     """
     Draw the bounding boxes fetched from the quadtree
     """
-    def drawBoxes(self):      
+    def drawBoxes(self):
         boxes = self.qt.getBBoxes()
         for box in boxes:
             self.draw_rect(box[0], box[1], box[2] - box[0], box[3] - box[1], "#000")
@@ -383,20 +417,21 @@ class Driver(pantograph.PantographHandler):
             self.draw_line(box[4], box[1], box[4], box[3], color = "#000")
 
     """
-    Draw the balls :)
+    Draw the balls
     """
     def drawBalls(self):
         for r in self.Balls:
             self.fill_circle(r.x,r.y,r.radius,r.color)
+            r.color = "#F00"
 
     """
-    Moves the balls by applying my super advanced euclidian based geometric
-    vector functions to my balls. By super advanced I mean ... not.
+    Moves the balls
     """
     def moveBalls(self):
         newqt = quadtree(self.bounds)
         for r in self.Balls:
             self.checkCollisions(r)
+        for r in self.Balls:
             r.move(self.bounds)
             newqt.insertBall(r)
         self.qt = newqt
@@ -411,8 +446,8 @@ class Driver(pantograph.PantographHandler):
             self.freeze = False
 
     """
-    Dbl Click will speed balls up by some factor
-    Shift Dbl Click will slow balls down by same factor
+    up arrow will speed balls up by some factor
+    down arrow Click will slow balls down by same factor
     """
     def on_key_down(self,InputEvent):
         # User hits the UP arrow
