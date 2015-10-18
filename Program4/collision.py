@@ -10,7 +10,8 @@ class node:
         self.y = y
         self.item = item
         self.bbox = bbox
-        self.children = {'NE': None, 'SE': None, 'SW': None, 'NW': None}
+        self.children = [None, None, None, None]
+        #self.children = {'NE': None, 'SE': None, 'SW': None, 'NW': None}
         
     def __str__(self):
         return "node at (%f,%f)" % (self.x, self.y)
@@ -47,26 +48,26 @@ class quadtree:
         if direction == None:
             print "couldn't insert"
         else:
-            if direction == 'NE':
+            if direction == 0:
                 node.bbox = [subroot.x, subroot.y, subroot.bbox[2], subroot.bbox[3]]
-            if direction == 'SE':
+            elif direction == 1:
                 node.bbox = [subroot.x, subroot.bbox[1], subroot.bbox[2], subroot.y]
-            if direction == 'SW':
+            elif direction == 2:
                 node.bbox = [subroot.bbox[0], subroot.bbox[1], subroot.x, subroot.y]
-            if direction == 'NW':
+            elif direction == 3:
                 node.bbox = [subroot.bbox[0], subroot.y, subroot.x, subroot.bbox[3]]
             subroot.children[direction] = node
         
                 
     def _compare(self, node1, node2):
         if node2.x >= node1.x and node2.y >= node1.y:
-                return 'NE'
+                return 0
         elif node2.x <= node1.x and node2.y <= node1.y:
-                return 'SW'
+                return 2
         elif node2.x > node1.x:
-                return 'SE'
+                return 1
         elif node2.y > node1.y:
-                return 'NW'
+                return 3
                 
     def traversal(self):
         self._traversal(self.root)
@@ -75,10 +76,10 @@ class quadtree:
         if subroot == None:
             return
         print subroot
-        self._traversal(subroot.children['NE'])
-        self._traversal(subroot.children['SE'])
-        self._traversal(subroot.children['SW'])
-        self._traversal(subroot.children['NW'])
+        self._traversal(subroot.children[0])
+        self._traversal(subroot.children[1])
+        self._traversal(subroot.children[2])
+        self._traversal(subroot.children[3])
         
     def getBBoxes(self):
         return self._getBBoxes(self.root)        
@@ -87,14 +88,14 @@ class quadtree:
         bboxes = []
         bboxes.append(subroot.bbox + [subroot.x, subroot.y])
         
-        if subroot.children['NE'] != None:
-                bboxes = bboxes + self._getBBoxes(subroot.children['NE'])
-        if subroot.children['SE'] != None:
-                bboxes = bboxes + self._getBBoxes(subroot.children['SE'])
-        if subroot.children['SW'] != None:
-                bboxes = bboxes + self._getBBoxes(subroot.children['SW'])
-        if subroot.children['NW'] != None:
-                bboxes = bboxes + self._getBBoxes(subroot.children['NW'])
+        if subroot.children[0] != None:
+                bboxes = bboxes + self._getBBoxes(subroot.children[0])
+        if subroot.children[1] != None:
+                bboxes = bboxes + self._getBBoxes(subroot.children[1])
+        if subroot.children[2] != None:
+                bboxes = bboxes + self._getBBoxes(subroot.children[2])
+        if subroot.children[3] != None:
+                bboxes = bboxes + self._getBBoxes(subroot.children[3])
 
         return bboxes
         
@@ -106,14 +107,14 @@ class quadtree:
         if self._inRegion(subroot, searchbox) and subroot.item != searchnode:
             nodes.append(subroot.item)
                 
-        if subroot.children['NE'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['NE'].bbox):
-            nodes = nodes + self._regionSearch(subroot.children['NE'], searchbox, searchnode)
-        if subroot.children['SE'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['SE'].bbox):
-            nodes = nodes + self._regionSearch(subroot.children['SE'], searchbox, searchnode)
-        if subroot.children['SW'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['SW'].bbox):
-            nodes = nodes + self._regionSearch(subroot.children['SW'], searchbox, searchnode)
-        if subroot.children['NW'] != None and self._rectangle_overlaps_region(searchbox, subroot.children['NW'].bbox):
-            nodes = nodes + self._regionSearch(subroot.children['NW'], searchbox, searchnode)
+        if subroot.children[0] != None and self._rectangle_overlaps_region(searchbox, subroot.children[0].bbox):
+            nodes = nodes + self._regionSearch(subroot.children[0], searchbox, searchnode)
+        if subroot.children[1] != None and self._rectangle_overlaps_region(searchbox, subroot.children[1].bbox):
+            nodes = nodes + self._regionSearch(subroot.children[1], searchbox, searchnode)
+        if subroot.children[2] != None and self._rectangle_overlaps_region(searchbox, subroot.children[2].bbox):
+            nodes = nodes + self._regionSearch(subroot.children[2], searchbox, searchnode)
+        if subroot.children[3] != None and self._rectangle_overlaps_region(searchbox, subroot.children[3].bbox):
+            nodes = nodes + self._regionSearch(subroot.children[3], searchbox, searchnode)
         return nodes
             
     def _inRegion(self, node, searchbox):
@@ -361,7 +362,7 @@ class Driver(pantograph.PantographHandler):
         self.bounds = Bounds(0,0,self.width,self.height)
         self.maxvelocity = 10
         self.BallSpeeds = np.arange(1,self.maxvelocity,1)
-        self.numBalls = 20
+        self.numBalls = 50
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
         self.qt = quadtree(self.bounds)
@@ -383,20 +384,7 @@ class Driver(pantograph.PantographHandler):
         self.clear_rect(0, 0, self.width, self.height)
         self.drawBalls()
         self.drawBoxes();
-
-    """
-    Not Implemented fully. The goal is to use the quadtree to check to see which
-    balls collide, then change direction.
-    """
-    def checkCollisions(self,r):
-        for ball in self.Balls:
-            nearballs = self.qt.regionSearch([ball.x-ball.radius-self.maxvelocity, 
-                ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
-                ball.y+ball.radius+self.maxvelocity], ball)
-            for nearball in nearballs:
-                nearball.color = "#0F0"
-                print "collision?"
-
+                
     """
     Generate some random point somewhere within the bounds of the canvas.
     """
@@ -412,7 +400,6 @@ class Driver(pantograph.PantographHandler):
     def drawBoxes(self):
         boxes = self.qt.getBBoxes()
         for box in boxes:
-            self.draw_rect(box[0], box[1], box[2] - box[0], box[3] - box[1], "#000")
             self.draw_line(box[0], box[5], box[2], box[5], color = "#000")
             self.draw_line(box[4], box[1], box[4], box[3], color = "#000")
 
@@ -425,12 +412,37 @@ class Driver(pantograph.PantographHandler):
             r.color = "#F00"
 
     """
+    Not Implemented fully. The goal is to use the quadtree to check to see which
+    balls collide, then change direction.
+    """
+    def checkCollisions(self):
+        for ball in self.Balls:
+            nearballs = self.qt.regionSearch([ball.x-ball.radius-self.maxvelocity, 
+                ball.x+ball.radius+self.maxvelocity, ball.y-ball.radius-self.maxvelocity, 
+                ball.y+ball.radius+self.maxvelocity], ball)
+            for nearball in nearballs:
+                nearball.color = "#0F0"
+                ball.color = "#0f0"
+     
+    """
+    When a ball has collided with at least one other ball in the last update,
+    its radius increases by one. If it has not and its radius is greater
+    that self.BallSize, the radius decreases based on the current radius
+    """           
+    def adjustSizes(self):
+        for ball in self.Balls:
+            if ball.color == "#0F0":
+                ball.radius+=1
+            elif ball.radius > self.BallSize:
+                ball.radius-=(ball.radius-self.BallSize)*.1
+
+    """
     Moves the balls
     """
     def moveBalls(self):
         newqt = quadtree(self.bounds)
-        for r in self.Balls:
-            self.checkCollisions(r)
+        self.checkCollisions()
+        self.adjustSizes()
         for r in self.Balls:
             r.move(self.bounds)
             newqt.insertBall(r)
@@ -447,19 +459,27 @@ class Driver(pantograph.PantographHandler):
 
     """
     up arrow will speed balls up by some factor
-    down arrow Click will slow balls down by same factor
+    down arrow will slow balls down by same factor
+    left arrow will remove a ball
+    right arrow will add a ball
     """
     def on_key_down(self,InputEvent):
         # User hits the UP arrow
         if InputEvent.key_code == 38:
-            print self.Balls[0].bearing
             for r in self.Balls:
                 r.changeSpeed(r.velocity * 1.25)
         # User hits the DOWN arrow
         if InputEvent.key_code == 40:
-            print self.Balls[0].bearing
             for r in self.Balls:
                 r.changeSpeed(r.velocity * 0.75)
+        # User hits the LEFT arrow
+        if InputEvent.key_code == 37:
+            del self.Balls[-1]
+            self.numBalls-=1
+        # User hits the RIGHT arrow
+        if InputEvent.key_code == 39:
+            self.Balls.append(Ball(self.getRandomPosition(), self.BallSize, random.choice(self.BallSpeeds), "#F00"))
+            self.numBalls+=1
 
 if __name__ == '__main__':
     app = pantograph.SimplePantographApplication(Driver)
