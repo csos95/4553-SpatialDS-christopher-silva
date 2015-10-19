@@ -1,9 +1,17 @@
+"""
+@author - Christopher Silva
+@date -  10/18/2015
+@description - This program displays moving balls on a html canvas and uses
+a quadtree to assist in collision detection
+"""
 import random
 import math
-import numpy as np
+import numpy
 import pantograph
-import time
 
+"""
+The node class holds an item, the x and y of the item, and a bbox for the item
+"""
 class node:
     def __init__(self, x, y, item, bbox):
         self.x = x
@@ -11,53 +19,66 @@ class node:
         self.item = item
         self.bbox = bbox
         self.children = [None, None, None, None]
-        
+    
+    """
+    Returns a string representation of the node
+    """
     def __str__(self):
-        return "node at (%f,%f)" % (self.x, self.y)
-    def __repr__(self):
-        return "node at (%f,%f)" % (self.x, self.y)
+        return "node at (%f,%f) containing %s" % (self.x, self.y, self.item)
         
-
+"""
+Stores nodes in a quadtree structure and includes the usual quadtree methods
+such as insert, traverse, and region search
+"""
 class quadtree:
     def __init__(self, bounds):
         self.root = None
         self.bbox = [bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
 
+    """
+    Public method that inserts a ball into the quadtree
+    """
     def insertBall(self, ball):
         newnode = node(ball.x, ball.y, ball, self.bbox)
         if self.root == None:
-            newnode.bbox = self.bbox
             self.root = newnode
         else:
             self._insert(self.root, newnode)
 
+    """
+    Public method that inserts a generic item into the quadtree
+    """
     def insert(self, x, y, item):
-        newnode = node(x, y, item, )
+        newnode = node(x, y, item, self.bbox)
         if self.root == None:
-            newnode.bbox = self.bbox
             self.root = newnode
         else:
             self._insert(self.root, newnode)
-                
+     
+    """
+    Private insertion method
+    it goes down the quadtree until it finds the appropriate place to insert
+    the node and then does so
+    """           
     def _insert(self, subroot, node):
         direction = self._compare(subroot, node)
         while subroot.children[direction] != None:
             subroot = subroot.children[direction]
             direction = self._compare(subroot, node)
-        if direction == None:
-            print "couldn't insert"
-        else:
-            if direction == 0:
-                node.bbox = [subroot.x, subroot.y, subroot.bbox[2], subroot.bbox[3]]
-            elif direction == 1:
-                node.bbox = [subroot.x, subroot.bbox[1], subroot.bbox[2], subroot.y]
-            elif direction == 2:
-                node.bbox = [subroot.bbox[0], subroot.bbox[1], subroot.x, subroot.y]
-            elif direction == 3:
-                node.bbox = [subroot.bbox[0], subroot.y, subroot.x, subroot.bbox[3]]
-            subroot.children[direction] = node
+        if direction == 0:
+            node.bbox = [subroot.x, subroot.y, subroot.bbox[2], subroot.bbox[3]]
+        elif direction == 1:
+            node.bbox = [subroot.x, subroot.bbox[1], subroot.bbox[2], subroot.y]
+        elif direction == 2:
+            node.bbox = [subroot.bbox[0], subroot.bbox[1], subroot.x, subroot.y]
+        elif direction == 3:
+            node.bbox = [subroot.bbox[0], subroot.y, subroot.x, subroot.bbox[3]]
+        subroot.children[direction] = node
         
-                
+    """
+    Private method that compares two nodes and returns which direction
+    the second node is in relation to the first
+    """
     def _compare(self, node1, node2):
         if node2.x >= node1.x and node2.y >= node1.y:
                 return 0
@@ -67,10 +88,17 @@ class quadtree:
                 return 1
         elif node2.y > node1.y:
                 return 3
-                
+    
+    """
+    Public traversal method that calls the private one
+    """
     def traversal(self):
         self._traversal(self.root)
         
+    """
+    Private traversal method that does through the quadtree and prints the
+    string representation of each node
+    """
     def _traversal(self, subroot):
         if subroot == None:
             return
@@ -79,10 +107,18 @@ class quadtree:
         self._traversal(subroot.children[1])
         self._traversal(subroot.children[2])
         self._traversal(subroot.children[3])
-        
+    
+    """
+    Private method that calls the private method and returns a list of the 
+    bounding boxes of all nodes
+    """
     def getBBoxes(self):
         return self._getBBoxes(self.root)        
-        
+    
+    """
+    Private method that goes through the quadtree and appends each nodes
+    bounding box to a list that is returned
+    """
     def _getBBoxes(self, subroot):
         bboxes = []
         bboxes.append(subroot.bbox + [subroot.x, subroot.y])
@@ -95,12 +131,18 @@ class quadtree:
                 bboxes = bboxes + self._getBBoxes(subroot.children[2])
         if subroot.children[3] != None:
                 bboxes = bboxes + self._getBBoxes(subroot.children[3])
-
         return bboxes
         
+    """
+    Public method that calls the private method and returns a list of found nodes
+    """
     def regionSearch(self, bbox, searchnode):
         return self._regionSearch(self.root, bbox, searchnode)
-        
+    
+    """
+    Private method that does a region search on the quadtree using a bounding 
+    box as the search criteria
+    """
     def _regionSearch(self, subroot, searchbox, searchnode):
         nodes = []
         if self._inRegion(subroot, searchbox) and subroot.item != searchnode:
@@ -115,45 +157,34 @@ class quadtree:
         if subroot.children[3] != None and self._rectangle_overlaps_region(searchbox, subroot.children[3].bbox):
             nodes = nodes + self._regionSearch(subroot.children[3], searchbox, searchnode)
         return nodes
-            
+    
+    """
+    Private method that returns true or false depending on whether or not a
+    node is within the search box
+    """
     def _inRegion(self, node, searchbox):
         return (node.x >= searchbox[0] and node.x <= searchbox[1] and node.y >= searchbox[2] and node.y <= searchbox[3])
-            
+        
+    """
+    Private method that returns true or false depending on whether or not the
+    bounding box is within the search box
+    """
     def _rectangle_overlaps_region(self, searchbox, bbox):
         return (searchbox[0] <= bbox[2] and searchbox[1] >= bbox[0] and searchbox[2] <= bbox[3] and searchbox[3] >= bbox[1])
         
-        
+"""
+Stores the x and y value as a point
+"""    
 class Point:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        
+    
+    """
+    returns a string representation of the point
+    """
     def __str__(self):
-        return "(%f,%f)" % (self.x, self.y)
-
-"""
-A vector can be determined from a single point when basing
-it from the origin (0,0), but I'm going to assume 2 points.
-Example:
-    AB = Vector(Point(3,4),Point(6,7))
-or if you want to use the origin
-    AB = Vector(Point(0,0),Point(8,4))
-"""
-class Vector(object):
-    def __init__(self,p1,p2):
-        assert not p1 == None
-        assert not p2 == None
-        self.p1 = p1
-        self.p2 = p2
-        self.v = [self.p1.x - self.p2.x, self.p1.y - self.p2.y]
-        self.a,self.b = self.v
-
-    def _str__(self):
-        return "[\n p1: %s,\n p2: %s,\n vector: %s,\n a: %s,\nb: %s\n]" % (self.p1, self.p2, self.v,self.a,self.b)
-
-    def __repr__(self):
-        return "[\n p1: %s,\n p2: %s,\n vector: %s,\n a: %s,\nb: %s\n]" % (self.p1, self.p2, self.v,self.a,self.b)
-
+        return "A point at (%f,%f)" % (self.x, self.y)
 
 """
 A class more or so to put all the boundary values together. Friendlier than
@@ -168,8 +199,10 @@ class Bounds(object):
     def __repr__(self):
         return "[%s %s %s %s]" % (self.minX, self.minY, self.maxX,self.maxY)
 
+"""
+A point that has radius, color, velocity, and stays within the screen bounds
+"""
 class BouncingPoint:
-    """initializes the values for the bouncing shape"""
     def __init__(self, point, xvel, yvel, radius, color):
         self.x = point.x
         self.y = point.y
@@ -178,7 +211,9 @@ class BouncingPoint:
         self.radius = radius
         self.color = color
 
-    """updates the position of the BouncingPoint"""
+    """
+    updates the position of the BouncingPoint
+    """
     def update(self, canvas):
         if self.x+self.radius <= 0 or self.x+self.radius >= canvas.width:
             self.xvel *= -1
@@ -191,7 +226,10 @@ class BouncingPoint:
         
         self.x += self.xvel
         self.y += self.yvel
-        
+    
+    """
+    multiplies the velocity of the ball
+    """
     def multiplySpeed(self, multiplicity):
         self.xvel = self.xvel * multiplicity
         self.yvel = self.yvel * multiplicity
@@ -199,15 +237,13 @@ class BouncingPoint:
 """
 The driver class that extends the Pantograph class that creates the html 5
 canvas animations.
-If you run this file from the command line "python visualizeQuadtree.py"
+If you run this file from the command line "python collision.py"
 Pantograph will start a local server running at address: http://127.0.0.1:8080
 Simply place "http://127.0.0.1:8080" in the address bar of a browser and hit enter.
 Dependencies:
     Pantograph:
         pip install pantograph
     Numpy
-    Point
-    Rectangle
 """
 class Driver(pantograph.PantographHandler):
 
@@ -217,12 +253,12 @@ class Driver(pantograph.PantographHandler):
     def setup(self):
         self.bounds = Bounds(0,0,self.width,self.height)
         self.maxvelocity = 10
-        self.numBalls = 200
+        self.numBalls = 100
         self.maxBallSize = 100
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
-        self.BallSpeeds = np.arange(-self.maxvelocity,self.maxvelocity+1,1)
-        self.BallSpeeds = np.delete(self.BallSpeeds, self.maxvelocity)
+        self.BallSpeeds = numpy.arange(-self.maxvelocity,self.maxvelocity+1,1)
+        self.BallSpeeds = numpy.delete(self.BallSpeeds, self.maxvelocity)
         self.qt = quadtree(self.bounds)
         self.Balls = []
         self.Boxes = []
@@ -267,8 +303,11 @@ class Driver(pantograph.PantographHandler):
         self.qt = newqt
 
     """
-    Not Implemented fully. The goal is to use the quadtree to check to see which
-    balls collide, then change direction.
+    For each ball a region search is done on the quadtree using a bounding box around the
+    ball that is twice as big as the max velocity and then for each returned ball
+    a simple collision is used (is the distance between balls thess than the sum of their radius)
+    to detect if they will collide in the next update and if they will they are changed to 
+    green(to mark they will collide for the adjustSize method) and their velocities are swapped
     """
     def checkCollisions(self):
         for ball in self.Balls:
@@ -309,7 +348,7 @@ class Driver(pantograph.PantographHandler):
     def drawBalls(self):
         for r in self.Balls:
             self.fill_circle(r.x,r.y,r.radius,r.color)
-            self.draw_circle(r.x,r.y,r.radius,"#000")
+            #self.draw_circle(r.x,r.y,r.radius,"#000")
             r.color = self.BallColor
 
 
