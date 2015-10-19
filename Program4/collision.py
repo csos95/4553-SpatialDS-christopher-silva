@@ -373,6 +373,7 @@ class Driver(pantograph.PantographHandler):
             self.freeze = False
 
     """
+    shift changes the grow/shrink mode
     space turns drawboxes on/off
     up arrow will speed balls up by some factor
     down arrow will slow balls down by same factor
@@ -380,7 +381,7 @@ class Driver(pantograph.PantographHandler):
     right arrow will add a ball
     """
     def on_key_down(self,InputEvent):
-        # User hits the space bar
+        # User hits shift
         if InputEvent.key_code == 16:
             if self.BallShrink:
                 self.BallShrink = False
