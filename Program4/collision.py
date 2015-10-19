@@ -252,8 +252,9 @@ class Driver(pantograph.PantographHandler):
     """
     def setup(self):
         self.bounds = Bounds(0,0,self.width,self.height)
+        self.GrowthAmount = 1
         self.maxvelocity = 10
-        self.numBalls = 100
+        self.numBalls = 500
         self.maxBallSize = 100
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
@@ -265,6 +266,7 @@ class Driver(pantograph.PantographHandler):
         self.BallColor = "#F00"
         self.freeze = False
         self.showBoxes = True
+        self.BallShrink = True
         
         for i in range(self.numBalls):
             ball = BouncingPoint(self.getRandomPosition(), random.choice(self.BallSpeeds), random.choice(self.BallSpeeds), self.BallSize, "#F00")
@@ -336,10 +338,10 @@ class Driver(pantograph.PantographHandler):
     def adjustSizes(self):
         for ball in self.Balls:
             if ball.color == "#0F0":
-                ball.radius+=1
+                ball.radius+=self.GrowthAmount
                 if ball.radius > self.maxBallSize:
                     del self.Balls[self.Balls.index(ball)]
-            elif ball.radius > self.BallSize:
+            elif ball.radius > self.BallSize and self.BallShrink:
                 ball.radius-=(ball.radius-self.BallSize)*.1
 
     """
@@ -378,6 +380,14 @@ class Driver(pantograph.PantographHandler):
     right arrow will add a ball
     """
     def on_key_down(self,InputEvent):
+        # User hits the space bar
+        if InputEvent.key_code == 16:
+            if self.BallShrink:
+                self.BallShrink = False
+                self.GrowthAmount = .1
+            else:
+                self.BallShrink = True
+                self.GrowthAmount = 1
         # User hits the space bar
         if InputEvent.key_code == 32:
             if self.showBoxes:
