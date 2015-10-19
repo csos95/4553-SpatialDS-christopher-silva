@@ -254,7 +254,7 @@ class Driver(pantograph.PantographHandler):
         self.bounds = Bounds(0,0,self.width,self.height)
         self.GrowthAmount = 1
         self.maxvelocity = 10
-        self.numBalls = 500
+        self.numBalls = 100
         self.maxBallSize = 100
         self.BallSize = 5
         self.halfSize = self.BallSize / 2
